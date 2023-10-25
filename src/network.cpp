@@ -125,6 +125,10 @@ namespace net {
       unsigned int last_value = 0;
       while (true) {
           unsigned int current_value = get_latest_round_trip_time();
+          if (current_value == 25565) {
+              std::cout << "EXITING: " << current_value << std::endl;
+              break;
+          }
           if (current_value != last_value) {
               std::cout << "Broadcasting value: " << current_value << std::endl;
               broadcast_data(current_value);
@@ -139,8 +143,9 @@ namespace net {
     enet_address_set_host(&addr, "0.0.0.0");
     enet_address_set_port(&addr, port);
 
+    set_latest_round_trip_time(0);
     std::thread(broadcast_thread_function).detach();
-    printf("Broadcast thread started\n //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////\n");
+    printf("Broadcast thread started\n");
 
     return host_t { enet_host_create(AF_INET, &addr, peers, 1, 0, 0) };
   }
@@ -149,6 +154,8 @@ namespace net {
   free_host(ENetHost *host) {
     std::for_each(host->peers, host->peers + host->peerCount, [](ENetPeer &peer_ref) {
       ENetPeer *peer = &peer_ref;
+
+      set_latest_round_trip_time(25565);
 
       if (peer) {
         enet_peer_disconnect_now(peer, 0);
