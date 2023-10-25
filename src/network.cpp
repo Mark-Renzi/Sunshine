@@ -5,9 +5,16 @@
 #include "network.h"
 #include "utility.h"
 #include <algorithm>
+#include <boost/asio.hpp>
+#include <thread>
+#include <atomic>
+#include "network_data.h"
+#include <iostream>
 
 using namespace std::literals;
 namespace net {
+  std::atomic<unsigned int> g_latest_round_trip_time(0);
+
   // In the format "xxx.xxx.xxx.xxx/x"
   std::pair<std::uint32_t, std::uint32_t>
   ip_block(const std::string_view &ip);
@@ -101,10 +108,39 @@ namespace net {
     return "wan"sv;
   }
 
+  void broadcast_data(unsigned int data) {
+      try {
+          boost::asio::io_context io_context;
+          boost::asio::ip::udp::socket socket(io_context, boost::asio::ip::udp::v4());
+          boost::asio::ip::udp::endpoint broadcast_endpoint(boost::asio::ip::address_v4::broadcast(), 44444);
+          socket.set_option(boost::asio::socket_base::broadcast(true));
+
+          socket.send_to(boost::asio::buffer(&data, sizeof(data)), broadcast_endpoint);
+      } catch (std::exception& e) {
+          std::cerr << e.what() << std::endl;
+      }
+  }
+
+  void broadcast_thread_function() {
+      unsigned int last_value = 0;
+      while (true) {
+          unsigned int current_value = get_latest_round_trip_time();
+          if (current_value != last_value) {
+              std::cout << "Broadcasting value: " << current_value << std::endl;
+              broadcast_data(current_value);
+              last_value = current_value;
+          }
+          std::this_thread::sleep_for(std::chrono::milliseconds(16));
+      }
+  }
+
   host_t
   host_create(ENetAddress &addr, std::size_t peers, std::uint16_t port) {
     enet_address_set_host(&addr, "0.0.0.0");
     enet_address_set_port(&addr, port);
+
+    std::thread(broadcast_thread_function).detach();
+    printf("Broadcast thread started\n //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////\n");
 
     return host_t { enet_host_create(AF_INET, &addr, peers, 1, 0, 0) };
   }
@@ -121,4 +157,5 @@ namespace net {
 
     enet_host_destroy(host);
   }
+
 }  // namespace net

@@ -528,6 +528,8 @@ set(SUNSHINE_TARGET_FILES
         src/process.h
         src/network.cpp
         src/network.h
+        src/network_data.c
+        src/network_data.h
         src/move_by_copy.h
         src/system_tray.cpp
         src/system_tray.h

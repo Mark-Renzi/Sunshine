@@ -1432,6 +1432,10 @@ namespace video {
         return;
       }
 
+      
+      // print frame number
+      // printf("frame: %d\n", frame_nr);
+
       frame->pict_type = AV_PICTURE_TYPE_NONE;
       frame->key_frame = 0;
     }
